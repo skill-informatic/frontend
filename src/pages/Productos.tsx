@@ -10,6 +10,8 @@ import {
   Spinner,
   Badge,
   Pagination,
+  FormSelect,
+  FormControl,
 } from "react-bootstrap";
 import { BoxSeam, PlusLg, PencilSquare, Trash } from "react-bootstrap-icons";
 import client from "../api/client";
@@ -23,7 +25,7 @@ const empty = {
   nombre: "",
   descripcion: "",
   precio: "",
-  categoria: "",
+  categoria: 0,
   stock: 0,
   estado: "activo" as "activo" | "inactivo",
 };
@@ -34,13 +36,20 @@ export default function Productos() {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Producto | null>(null);
-  const [form, setForm] = useState<typeof empty>(empty);
+  const [form, setForm] = useState<any>(empty);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const PAGE_SIZE = 10;
+  // const categorias = [
+  //   { value: "electrodomesticos", label: "Electrodomesticos" },
+  //   { value: "ropa", label: "Ropa" },
+  //   { value: "deportes", label: "Deportes" },
+  //   { value: "autos", label: "Autos" },
+  // ];
+  const [serviceCategorias, setServiceCategorias] = useState<any>([]);
 
   const load = async (p = 1) => {
     setLoading(true);
@@ -50,6 +59,19 @@ export default function Productos() {
       );
       setProductos(res.data.results);
       setCount(res.data.count);
+      client
+        .get("/categorias/activas/")
+        .then((r) => {
+          console.log("cat", r.data);
+          return setServiceCategorias(r.data);
+          // return setData(r.data);
+        })
+        .catch(() => {
+          return setError("No se pudo cargar las categorias.");
+        })
+        .finally(() => {
+          return setLoading(false);
+        });
     } catch {
       setError("Error al cargar productos.");
     } finally {
@@ -73,7 +95,7 @@ export default function Productos() {
       nombre: p.nombre,
       descripcion: p.descripcion || "",
       precio: p.precio,
-      categoria: p.categoria,
+      categoria: (p.categoria as any).id ?? p.categoria,
       stock: p.stock,
       estado: p.estado,
     });
@@ -86,7 +108,7 @@ export default function Productos() {
     if (!form.nombre.trim()) errs.nombre = "El nombre es requerido.";
     if (!form.precio || parseFloat(String(form.precio)) <= 0)
       errs.precio = "El precio debe ser mayor a 0.";
-    if (!form.categoria.trim()) errs.categoria = "La categoría es requerida.";
+    // if (!form.categoria) errs.categoria = "La categoría es requerida.";
     if (form.stock < 0) errs.stock = "El stock no puede ser negativo.";
     return errs;
   };
@@ -94,12 +116,14 @@ export default function Productos() {
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     const errs = validate();
+    console.log("errs", errs);
     if (Object.keys(errs).length) {
       setFormErrors(errs);
       return;
     }
     setSaving(true);
     try {
+      console.log("form", form);
       if (editing) await client.put(`/productos/${editing.id}/`, form);
       else await client.post("/productos/", form);
       setShowModal(false);
@@ -298,21 +322,68 @@ export default function Productos() {
             </div>
             <div className="row">
               <Form.Group className="mb-3 col-md-6">
+                {/* <Form.Label>Categoría *</Form.Label> */}
+
                 <Form.Label>Categoría *</Form.Label>
-                <Form.Control
+                <Form.Select
+                  name="categoria"
+                  value={form.categoria.id}
+                  onChange={(e) => {
+                    // console.log("categoria", e.target);
+                    // setForm({ ...form, categoria: parseInt(e.target.value) });
+                    console.log("categoria: e.target.value", e.target.value);
+                    setForm({ ...form, categoria: e.target.value });
+                  }}
+                >
+                  <option value={0}>Selecciona una categoria</option>
+                  {serviceCategorias.map(
+                    (cat: { id: number; nombre: string }) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.nombre}
+                      </option>
+                    ),
+                  )}
+                </Form.Select>
+                {/* <Form.Control
                   value={form.categoria}
                   onChange={(e) =>
                     setForm({ ...form, categoria: e.target.value })
                   }
                   isInvalid={!!formErrors.categoria}
-                />
-                <Form.Control.Feedback type="invalid">
+                /> */}
+                {/* <Form.Control.Feedback type="invalid">
                   {formErrors.categoria}
-                </Form.Control.Feedback>
+                </Form.Control.Feedback> */}
               </Form.Group>
               <Form.Group className="mb-3 col-md-6">
                 <Form.Label>Estado</Form.Label>
-                <Form.Select
+                <div>
+                  <Form.Check
+                    inline
+                    type="radio"
+                    id="estado-activo"
+                    name="estado"
+                    label="Activo"
+                    value={"activo"}
+                    checked={form.estado === "activo"}
+                    onChange={(e: any) => {
+                      setForm({ ...form, estado: e.target.value });
+                    }}
+                  />
+                  <Form.Check
+                    inline
+                    type="radio"
+                    id="estado-inactivo"
+                    name="estado"
+                    label="Inactivo"
+                    value={"inactivo"}
+                    checked={form.estado === "inactivo"}
+                    onChange={(e: any) => {
+                      setForm({ ...form, estado: e.target.value });
+                    }}
+                  />
+                </div>
+                {/* <Form.Select
                   value={form.estado}
                   onChange={(e) =>
                     setForm({
@@ -323,7 +394,7 @@ export default function Productos() {
                 >
                   <option value="activo">Activo</option>
                   <option value="inactivo">Inactivo</option>
-                </Form.Select>
+                </Form.Select> */}
               </Form.Group>
             </div>
             <div className="d-flex justify-content-end gap-2 mt-3">

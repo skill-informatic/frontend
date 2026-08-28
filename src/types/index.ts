@@ -3,9 +3,9 @@ export interface Producto {
   nombre: string;
   descripcion?: string;
   precio: string;
-  categoria: string;
+  categoria: number;
   stock: number;
-  estado: 'activo' | 'inactivo';
+  estado: "activo" | "inactivo";
   fecha_registro: string;
 }
 
